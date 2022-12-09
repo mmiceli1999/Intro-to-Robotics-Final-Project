@@ -1,0 +1,157 @@
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_HMC5883_U.h>
+#include <AFMotor.h>
+
+AF_DCMotor motor1(1, MOTOR12_1KHZ); // The first argument stands for the number of the motors in the shield and the second 
+AF_DCMotor motor2(2, MOTOR12_1KHZ); // one stands for the motor speed control frequency
+AF_DCMotor motor3(3, MOTOR34_1KHZ);
+AF_DCMotor motor4(4, MOTOR34_1KHZ);
+const int ledPin = 53; // the number of the LED pin
+
+Adafruit_HMC5883_Unified mag = Adafruit_HMC5883_Unified(12345);
+
+void displaySensorDetails(void)
+{
+  sensor_t sensor;
+  mag.getSensor(&sensor);
+  Serial.println("------------------------------------");
+  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" uT");
+  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" uT");
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" uT");  
+  Serial.println("------------------------------------");
+  Serial.println("");
+  delay(500);
+}
+
+void setup(void) 
+{
+  Serial.begin(9600);
+  Serial.println("HMC5883 Magnetometer Test"); Serial.println("");
+  if(!mag.begin())
+  {
+    Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
+    while(1);
+  }
+  displaySensorDetails();
+
+ motor1.setSpeed(255);
+ motor2.setSpeed(255);
+ motor3.setSpeed(255);
+ motor4.setSpeed(255);
+ pinMode(ledPin,OUTPUT); // initialize the LED pin as an output:
+ 
+ //initial position setup here (motor 4 non-responsive)
+ //motor1.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//motor 1 right
+ //motor1.run(BACKWARD); delay(500);//motor 1 left
+ //motor1.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+ //motor2.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//motor 2 forward
+ //motor2.run(BACKWARD); delay(500);//motor 2 back
+ //motor2.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+ //motor3.run(FORWARD); delay(1500); digitalWrite(ledPin,HIGH);//motor 3 up
+ //motor3.run(BACKWARD); delay(10);//motor 3 down
+ //motor3.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+}
+
+void loop(void) 
+{
+  sensors_event_t event; 
+  mag.getEvent(&event);
+ 
+  Serial.print("X: "); Serial.print(event.magnetic.x); Serial.print("  ");
+  Serial.print("Y: "); Serial.print(event.magnetic.y); Serial.print("  ");
+  Serial.print("Z: "); Serial.print(event.magnetic.z); Serial.print("  ");Serial.println("uT");
+
+  //x y z magnetic field readings
+  float x = event.magnetic.x;
+  float y = event.magnetic.y;
+  float z = event.magnetic.z;
+  
+  float heading = atan2(event.magnetic.y, event.magnetic.x);
+  
+  float declinationAngle = 0.0175;
+  heading += declinationAngle;
+  
+  if(heading < 0)
+    heading += 2*PI;
+    
+  if(heading > 2*PI)
+    heading -= 2*PI;
+  
+  //magnitude of the field 
+  float headingDegrees = heading * 180/M_PI; 
+  
+  Serial.print("Heading (degrees): "); Serial.println(headingDegrees);
+  
+  delay(1500); //changes from ~180 when magnet approaches
+  
+  //Begin main code
+  if(headingDegrees > 200 && headingDegrees < 300){
+
+    if(x < -350 && y < -350){
+    motor2.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//forward
+    motor2.run(BACKWARD); delay(1500);//back
+    motor2.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    motor3.run(FORWARD); delay(1750); digitalWrite(ledPin,HIGH);//up
+    motor3.run(BACKWARD); delay(10); //down
+    motor3.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    motor2.run(FORWARD); delay(1500); digitalWrite(ledPin,HIGH);//forward
+    motor2.run(BACKWARD); delay(10);//back
+    motor2.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    motor3.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//up
+    motor3.run(BACKWARD); delay(1500); //down
+    motor3.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    }
+    
+    if(x < -350 && y > -150 && y < -115){
+    motor1.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//right
+    motor1.run(BACKWARD); delay(2000);//left
+    motor1.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    motor1.run(FORWARD); delay(1750); digitalWrite(ledPin,HIGH);//right
+    motor1.run(BACKWARD); delay(10);//left
+    motor1.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    }
+  }
+
+  if(headingDegrees > 190 && headingDegrees < 200){
+
+    if(y > -70 && y < -60){
+    motor3.run(FORWARD); delay(2000); digitalWrite(ledPin,HIGH);//up
+    motor3.run(BACKWARD); delay(10); //down
+    motor3.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    motor3.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//up
+    motor3.run(BACKWARD); delay(1500); //down
+    motor3.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    }
+  }
+
+  if(headingDegrees < 10){
+    motor3.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//up
+    motor3.run(BACKWARD); delay(1500); //down
+    motor3.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    motor3.run(FORWARD); delay(1500); digitalWrite(ledPin,HIGH);//up
+    motor3.run(BACKWARD); delay(10); //down
+    motor3.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+  }
+  if(headingDegrees > 160 && headingDegrees < 170 && y > 80 && y < 100 && x < -350){
+    motor1.run(FORWARD); delay(1750); digitalWrite(ledPin,HIGH);//right
+    motor1.run(BACKWARD); delay(10);//left
+    motor1.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    motor1.run(FORWARD); delay(10); digitalWrite(ledPin,HIGH);//right
+    motor1.run(BACKWARD); delay(1800);//left
+    motor1.run(RELEASE); delay(1000); digitalWrite(ledPin,LOW);
+    delay(1000);
+    }
+}
